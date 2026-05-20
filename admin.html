@@ -1013,8 +1013,10 @@
     function openAddInstructorModal() {
       document.getElementById('new-instructor-name').value = '';
       document.getElementById('generated-link-box').style.display = 'none';
-      document.getElementById('add-instructor-submit-btn').style.display = '';
-      document.getElementById('add-instructor-submit-btn').innerHTML = '<i class="fas fa-plus"></i> 강사 추가';
+      const submitBtn = document.getElementById('add-instructor-submit-btn');
+      submitBtn.style.display = '';
+      submitBtn.disabled = false; // ← 버튼 비활성화 상태 초기화 (버그 수정)
+      submitBtn.innerHTML = '<i class="fas fa-plus"></i> 강사 추가';
       selectedColor = COLORS[0];
       renderColorPicker();
       document.getElementById('add-instructor-modal').classList.add('show');
