@@ -719,6 +719,30 @@
     // 전역 상태
     // =============================================
     let adminPassword = '';
+
+    // =============================================
+    // 페이지 로드 시 저장된 로그인 정보로 자동 로그인
+    // (sessionStorage = 브라우저 탭 닫기 전까지 유지)
+    // =============================================
+    window.addEventListener('load', async () => {
+      const saved = sessionStorage.getItem('adminPw');
+      if (saved) {
+        try {
+          const res = await fetch(`${CONFIG.SCRIPT_URL}?action=verifyAdmin&password=${encodeURIComponent(saved)}`);
+          const data = await res.json();
+          if (data.valid) {
+            adminPassword = saved;
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('main-app').classList.add('show');
+            await loadAllData();
+            renderCalendar();
+            return;
+          }
+        } catch(e) {}
+        // 저장된 비밀번호가 유효하지 않으면 삭제
+        sessionStorage.removeItem('adminPw');
+      }
+    });
     let currentYear = new Date().getFullYear();
     let currentMonth = new Date().getMonth();
     let allSchedules = [];       // 전체 강사 일정
@@ -752,6 +776,7 @@
 
         if (data.valid) {
           adminPassword = pw;
+          sessionStorage.setItem('adminPw', pw); // 로그인 정보 저장
           document.getElementById('login-screen').style.display = 'none';
           document.getElementById('main-app').classList.add('show');
           await loadAllData();
@@ -771,6 +796,7 @@
     function logout() {
       if (!confirm('로그아웃 하시겠습니까?')) return;
       adminPassword = '';
+      sessionStorage.removeItem('adminPw'); // 저장된 로그인 정보 삭제
       document.getElementById('main-app').classList.remove('show');
       document.getElementById('login-screen').style.display = 'flex';
       document.getElementById('pw-input').value = '';
