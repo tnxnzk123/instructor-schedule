@@ -1,0 +1,1085 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>강의 일정 관리</title>
+  <!-- 예쁜 한국어/영문 폰트 불러오기 -->
+  <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <!-- 아이콘 라이브러리 -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- 공통 설정 파일 -->
+  <script src="config.js"></script>
+  <style>
+    /* ======================================
+       전체 초기화 및 기본 설정
+    ====================================== */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-dark: #0f0f1a;
+      --bg-card: rgba(255,255,255,0.06);
+      --bg-card-hover: rgba(255,255,255,0.1);
+      --border: rgba(255,255,255,0.1);
+      --border-light: rgba(255,255,255,0.06);
+      --accent: #818cf8;
+      --accent-glow: rgba(129,140,248,0.3);
+      --accent-dark: #6366f1;
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --success: #34d399;
+      --danger: #f87171;
+      --warning: #fbbf24;
+      --today-bg: rgba(129,140,248,0.15);
+      --today-border: #818cf8;
+      --shadow-glow: 0 0 40px rgba(129,140,248,0.15);
+      --radius-sm: 8px;
+      --radius-md: 14px;
+      --radius-lg: 20px;
+      --radius-xl: 28px;
+    }
+
+    body {
+      font-family: 'Pretendard', 'Inter', -apple-system, sans-serif;
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      min-height: 100vh;
+      overflow-x: hidden;
+      background-image:
+        radial-gradient(ellipse 80% 60% at 20% 0%, rgba(99,102,241,0.12) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(139,92,246,0.08) 0%, transparent 60%);
+    }
+
+    /* ======================================
+       로딩 화면
+    ====================================== */
+    #loading-screen {
+      position: fixed; inset: 0;
+      background: var(--bg-dark);
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 20px;
+      z-index: 9999;
+      transition: opacity 0.4s ease;
+    }
+    #loading-screen.hide { opacity: 0; pointer-events: none; }
+    .loading-spinner {
+      width: 48px; height: 48px;
+      border: 3px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    .loading-text { color: var(--text-secondary); font-size: 0.9rem; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ======================================
+       오류 화면 (잘못된 링크 접속 시)
+    ====================================== */
+    #error-screen {
+      display: none;
+      position: fixed; inset: 0;
+      background: var(--bg-dark);
+      align-items: center; justify-content: center;
+      flex-direction: column; gap: 16px;
+      z-index: 9998;
+    }
+    #error-screen.show { display: flex; }
+    .error-icon { font-size: 4rem; color: var(--danger); }
+    .error-title { font-size: 1.5rem; font-weight: 700; }
+    .error-desc { color: var(--text-secondary); text-align: center; max-width: 360px; line-height: 1.6; }
+
+    /* ======================================
+       헤더
+    ====================================== */
+    .app-header {
+      padding: 24px 32px;
+      display: flex; align-items: center; justify-content: space-between;
+      border-bottom: 1px solid var(--border-light);
+      backdrop-filter: blur(12px);
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(15,15,26,0.85);
+    }
+    .header-left { display: flex; align-items: center; gap: 14px; }
+    .header-logo {
+      width: 40px; height: 40px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.2rem;
+      box-shadow: 0 4px 15px rgba(99,102,241,0.4);
+    }
+    .header-title { font-size: 1.1rem; font-weight: 600; }
+    .header-subtitle { font-size: 0.78rem; color: var(--text-secondary); margin-top: 1px; }
+
+    /* 강사 이름 배지 */
+    .instructor-badge {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 16px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 50px;
+      font-size: 0.88rem;
+    }
+    .instructor-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: var(--accent);
+    }
+
+    /* ======================================
+       메인 컨텐츠 영역
+    ====================================== */
+    .main-content {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    /* ======================================
+       달력 네비게이션 (월 이동)
+    ====================================== */
+    .calendar-nav {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .month-title {
+      font-size: 1.6rem; font-weight: 700;
+      background: linear-gradient(135deg, var(--text-primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .nav-buttons { display: flex; gap: 8px; }
+    .nav-btn {
+      width: 42px; height: 42px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+    }
+    .nav-btn:hover {
+      background: var(--bg-card-hover);
+      border-color: var(--accent);
+      color: var(--accent);
+      transform: translateY(-1px);
+    }
+    .today-btn {
+      padding: 0 18px; width: auto;
+      font-size: 0.82rem; font-weight: 500;
+    }
+
+    /* ======================================
+       달력 그리드
+    ====================================== */
+    .calendar-wrapper {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow: var(--shadow-glow);
+    }
+
+    /* 요일 헤더 */
+    .weekday-header {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      background: rgba(255,255,255,0.03);
+      border-bottom: 1px solid var(--border-light);
+    }
+    .weekday-cell {
+      padding: 14px 0;
+      text-align: center;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+    }
+    .weekday-cell.sunday { color: #f87171; }
+    .weekday-cell.saturday { color: #93c5fd; }
+
+    /* 날짜 그리드 */
+    .calendar-grid {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+    }
+    .day-cell {
+      min-height: 110px;
+      border-right: 1px solid var(--border-light);
+      border-bottom: 1px solid var(--border-light);
+      padding: 10px 8px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      position: relative;
+    }
+    .day-cell:nth-child(7n) { border-right: none; }
+    .day-cell:hover { background: var(--bg-card-hover); }
+    .day-cell.other-month { opacity: 0.3; cursor: default; }
+    .day-cell.other-month:hover { background: transparent; }
+    .day-cell.today {
+      background: var(--today-bg);
+    }
+
+    /* 날짜 숫자 */
+    .day-number {
+      font-size: 0.88rem;
+      font-weight: 500;
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      margin-bottom: 6px;
+      color: var(--text-primary);
+    }
+    .day-cell.today .day-number {
+      background: var(--accent);
+      color: white;
+      font-weight: 700;
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+    .day-cell.sunday .day-number { color: #f87171; }
+    .day-cell.saturday .day-number { color: #93c5fd; }
+    .day-cell.today.sunday .day-number,
+    .day-cell.today.saturday .day-number { color: white; }
+
+    /* 일정 이벤트 칩 */
+    .event-chip {
+      font-size: 0.72rem;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-bottom: 3px;
+      cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 500;
+      transition: opacity 0.15s;
+      display: flex; align-items: center; gap: 4px;
+    }
+    .event-chip:hover { opacity: 0.8; }
+    .event-chip i { font-size: 0.65rem; flex-shrink: 0; }
+
+    /* 더보기 표시 */
+    .more-events {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      padding: 2px 4px;
+    }
+
+    /* ======================================
+       일정 추가 버튼 (플로팅)
+    ====================================== */
+    .fab {
+      position: fixed; bottom: 32px; right: 32px;
+      width: 60px; height: 60px;
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      border: none;
+      border-radius: 50%;
+      color: white;
+      font-size: 1.5rem;
+      cursor: pointer;
+      box-shadow: 0 8px 30px rgba(99,102,241,0.5);
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+      z-index: 200;
+    }
+    .fab:hover {
+      transform: scale(1.1) translateY(-2px);
+      box-shadow: 0 12px 40px rgba(99,102,241,0.6);
+    }
+    .fab:active { transform: scale(0.95); }
+
+    /* ======================================
+       모달 (일정 추가/상세보기)
+    ====================================== */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.7);
+      backdrop-filter: blur(4px);
+      display: none; align-items: center; justify-content: center;
+      z-index: 500;
+      padding: 16px;
+    }
+    .modal-overlay.show { display: flex; }
+
+    .modal {
+      background: #1a1a2e;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-xl);
+      width: 100%; max-width: 480px;
+      padding: 32px;
+      box-shadow: 0 25px 60px rgba(0,0,0,0.5), var(--shadow-glow);
+      animation: modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes modalIn {
+      from { opacity: 0; transform: scale(0.9) translateY(20px); }
+      to { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 28px;
+    }
+    .modal-title {
+      font-size: 1.2rem; font-weight: 700;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .modal-title i { color: var(--accent); }
+    .modal-close {
+      width: 36px; height: 36px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+    }
+    .modal-close:hover { color: var(--danger); border-color: var(--danger); }
+
+    /* 폼 스타일 */
+    .form-group { margin-bottom: 20px; }
+    .form-label {
+      display: block;
+      font-size: 0.82rem; font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 8px;
+      letter-spacing: 0.03em;
+    }
+    .form-input {
+      width: 100%;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 12px 16px;
+      color: var(--text-primary);
+      font-size: 0.95rem;
+      font-family: inherit;
+      transition: all 0.2s;
+      outline: none;
+    }
+    .form-input:focus {
+      border-color: var(--accent);
+      background: rgba(129,140,248,0.08);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .form-input::placeholder { color: var(--text-muted); }
+
+    /* 시간 입력 (두 칸 나란히) */
+    .time-row {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* 폼 버튼들 */
+    .form-actions {
+      display: flex; gap: 12px; margin-top: 28px;
+    }
+    .btn {
+      flex: 1; padding: 14px;
+      border: none; border-radius: var(--radius-md);
+      font-size: 0.95rem; font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-family: inherit;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: white;
+      box-shadow: 0 4px 20px rgba(99,102,241,0.4);
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 8px 25px rgba(99,102,241,0.5);
+    }
+    .btn-secondary {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+    .btn-secondary:hover { background: var(--bg-card-hover); color: var(--text-primary); }
+    .btn-danger {
+      background: rgba(248,113,113,0.15);
+      border: 1px solid rgba(248,113,113,0.3);
+      color: var(--danger);
+    }
+    .btn-danger:hover { background: rgba(248,113,113,0.25); }
+
+    /* ======================================
+       일정 상세보기 모달
+    ====================================== */
+    .detail-field {
+      display: flex; align-items: flex-start; gap: 12px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border-light);
+    }
+    .detail-field:last-child { border-bottom: none; }
+    .detail-icon {
+      width: 36px; height: 36px;
+      background: rgba(129,140,248,0.15);
+      border-radius: var(--radius-sm);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+    .detail-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 2px; }
+    .detail-value { font-size: 0.95rem; font-weight: 500; }
+
+    /* ======================================
+       월간 일정 요약 (하단)
+    ====================================== */
+    .month-summary {
+      margin-top: 32px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      padding: 24px;
+    }
+    .summary-title {
+      font-size: 1rem; font-weight: 600;
+      margin-bottom: 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .summary-title i { color: var(--accent); }
+
+    .summary-list { display: flex; flex-direction: column; gap: 10px; }
+    .summary-item {
+      display: flex; align-items: center; gap: 16px;
+      padding: 14px 16px;
+      background: rgba(255,255,255,0.03);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border-light);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .summary-item:hover {
+      background: rgba(129,140,248,0.08);
+      border-color: var(--accent);
+    }
+    .summary-date {
+      font-size: 0.78rem; font-weight: 700;
+      color: var(--accent);
+      min-width: 80px;
+    }
+    .summary-info { flex: 1; }
+    .summary-title-text { font-size: 0.92rem; font-weight: 500; }
+    .summary-meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+    .empty-state {
+      text-align: center; padding: 40px;
+      color: var(--text-muted);
+    }
+    .empty-state i { font-size: 2.5rem; margin-bottom: 12px; opacity: 0.5; display: block; }
+    .empty-state p { font-size: 0.9rem; }
+
+    /* ======================================
+       토스트 알림
+    ====================================== */
+    .toast-container {
+      position: fixed; bottom: 100px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex; flex-direction: column; gap: 8px;
+      align-items: center;
+    }
+    .toast {
+      padding: 12px 24px;
+      border-radius: 50px;
+      font-size: 0.88rem; font-weight: 500;
+      animation: toastIn 0.3s ease, toastOut 0.3s ease 2.7s forwards;
+      white-space: nowrap;
+    }
+    .toast.success { background: rgba(52,211,153,0.9); color: #064e3b; }
+    .toast.error { background: rgba(248,113,113,0.9); color: #7f1d1d; }
+    .toast.info { background: rgba(129,140,248,0.9); color: #1e1b4b; }
+    @keyframes toastIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes toastOut { to { opacity:0; transform:translateY(-10px); } }
+
+    /* ======================================
+       모바일 반응형
+    ====================================== */
+    @media (max-width: 640px) {
+      .app-header { padding: 16px; }
+      .main-content { padding: 20px 12px; }
+      .month-title { font-size: 1.2rem; }
+      .day-cell { min-height: 70px; padding: 6px 4px; }
+      .day-number { width: 22px; height: 22px; font-size: 0.75rem; }
+      .event-chip { font-size: 0.62rem; padding: 2px 4px; }
+      .modal { padding: 24px 20px; }
+      .fab { bottom: 20px; right: 20px; width: 52px; height: 52px; font-size: 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 🔄 로딩 화면 -->
+  <div id="loading-screen">
+    <div class="loading-spinner"></div>
+    <p class="loading-text">일정을 불러오는 중...</p>
+  </div>
+
+  <!-- ❌ 오류 화면 (잘못된 링크) -->
+  <div id="error-screen">
+    <div class="error-icon"><i class="fas fa-link-slash"></i></div>
+    <div class="error-title">유효하지 않은 링크입니다</div>
+    <div class="error-desc">
+      강사 전용 링크가 올바르지 않습니다.<br>
+      관리자에게 문의하여 새 링크를 받아주세요.
+    </div>
+  </div>
+
+  <!-- 📌 헤더 -->
+  <header class="app-header">
+    <div class="header-left">
+      <div class="header-logo"><i class="fas fa-calendar-check"></i></div>
+      <div>
+        <div class="header-title">강의 일정 관리</div>
+        <div class="header-subtitle">AI 교육 협력강사 전용 시스템</div>
+      </div>
+    </div>
+    <div class="instructor-badge">
+      <div class="instructor-dot" id="instructor-color-dot"></div>
+      <span id="instructor-name-badge">로딩 중...</span>
+    </div>
+  </header>
+
+  <!-- 📅 메인 달력 영역 -->
+  <main class="main-content">
+
+    <!-- 월 이동 네비게이션 -->
+    <div class="calendar-nav">
+      <div class="month-title" id="month-title">2026년 5월</div>
+      <div class="nav-buttons">
+        <button class="nav-btn today-btn" onclick="goToToday()">오늘</button>
+        <button class="nav-btn" onclick="changeMonth(-1)"><i class="fas fa-chevron-left"></i></button>
+        <button class="nav-btn" onclick="changeMonth(1)"><i class="fas fa-chevron-right"></i></button>
+      </div>
+    </div>
+
+    <!-- 달력 -->
+    <div class="calendar-wrapper">
+      <div class="weekday-header">
+        <div class="weekday-cell sunday">일</div>
+        <div class="weekday-cell">월</div>
+        <div class="weekday-cell">화</div>
+        <div class="weekday-cell">수</div>
+        <div class="weekday-cell">목</div>
+        <div class="weekday-cell">금</div>
+        <div class="weekday-cell saturday">토</div>
+      </div>
+      <div class="calendar-grid" id="calendar-grid">
+        <!-- 날짜 셀들이 JavaScript로 자동 생성됩니다 -->
+      </div>
+    </div>
+
+    <!-- 이번 달 일정 목록 (요약) -->
+    <div class="month-summary">
+      <div class="summary-title">
+        <i class="fas fa-list-check"></i>
+        <span id="summary-month-label">이번 달 강의 일정</span>
+      </div>
+      <div class="summary-list" id="summary-list">
+        <!-- 일정 목록이 여기에 표시됩니다 -->
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ➕ 일정 추가 플로팅 버튼 -->
+  <button class="fab" onclick="openAddModal()" title="일정 추가">
+    <i class="fas fa-plus"></i>
+  </button>
+
+  <!-- ======================================
+       📝 일정 추가 모달
+  ====================================== -->
+  <div class="modal-overlay" id="add-modal-overlay" onclick="closeModalOnOverlay(event, 'add-modal-overlay')">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fas fa-calendar-plus"></i>
+          새 강의 일정 추가
+        </div>
+        <button class="modal-close" onclick="closeAddModal()"><i class="fas fa-xmark"></i></button>
+      </div>
+
+      <form id="add-form" onsubmit="submitSchedule(event)">
+        <div class="form-group">
+          <label class="form-label">강의 날짜 *</label>
+          <input type="date" class="form-input" id="input-date" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">강의 제목 *</label>
+          <input type="text" class="form-input" id="input-title" placeholder="예: AI 기초 과정 3주차" required maxlength="50">
+        </div>
+        <div class="form-group">
+          <label class="form-label">강의 시간</label>
+          <div class="time-row">
+            <input type="time" class="form-input" id="input-start" placeholder="시작">
+            <input type="time" class="form-input" id="input-end" placeholder="종료">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">장소</label>
+          <input type="text" class="form-input" id="input-location" placeholder="예: 강남 교육장 3층" maxlength="50">
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" onclick="closeAddModal()">취소</button>
+          <button type="submit" class="btn btn-primary" id="submit-btn">
+            <i class="fas fa-check"></i> 저장하기
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ======================================
+       🔍 일정 상세보기 모달
+  ====================================== -->
+  <div class="modal-overlay" id="detail-modal-overlay" onclick="closeModalOnOverlay(event, 'detail-modal-overlay')">
+    <div class="modal">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fas fa-calendar-day"></i>
+          강의 상세 정보
+        </div>
+        <button class="modal-close" onclick="closeDetailModal()"><i class="fas fa-xmark"></i></button>
+      </div>
+
+      <div id="detail-content">
+        <div class="detail-field">
+          <div class="detail-icon"><i class="fas fa-calendar"></i></div>
+          <div>
+            <div class="detail-label">날짜</div>
+            <div class="detail-value" id="detail-date">-</div>
+          </div>
+        </div>
+        <div class="detail-field">
+          <div class="detail-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+          <div>
+            <div class="detail-label">강의 제목</div>
+            <div class="detail-value" id="detail-title">-</div>
+          </div>
+        </div>
+        <div class="detail-field">
+          <div class="detail-icon"><i class="fas fa-clock"></i></div>
+          <div>
+            <div class="detail-label">강의 시간</div>
+            <div class="detail-value" id="detail-time">-</div>
+          </div>
+        </div>
+        <div class="detail-field">
+          <div class="detail-icon"><i class="fas fa-location-dot"></i></div>
+          <div>
+            <div class="detail-label">장소</div>
+            <div class="detail-value" id="detail-location">-</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-actions" style="margin-top:24px;">
+        <button class="btn btn-secondary" onclick="closeDetailModal()">닫기</button>
+        <button class="btn btn-danger" onclick="deleteScheduleById()" id="delete-btn">
+          <i class="fas fa-trash"></i> 삭제
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 🔔 토스트 알림 컨테이너 -->
+  <div class="toast-container" id="toast-container"></div>
+
+  <!-- ======================================
+       📦 JavaScript 로직
+  ====================================== -->
+  <script>
+    // =============================================
+    // 전역 상태 변수
+    // =============================================
+    let currentYear = new Date().getFullYear();
+    let currentMonth = new Date().getMonth(); // 0=1월, 11=12월
+    let instructorId = '';        // URL에서 읽어온 강사 고유 ID
+    let instructorInfo = null;    // 강사 이름, 색상 정보
+    let allSchedules = [];        // 이 강사의 모든 일정 데이터
+    let selectedScheduleId = '';  // 상세보기 중인 일정 ID
+
+    // =============================================
+    // 앱 시작: URL에서 강사 ID 읽고 데이터 로드
+    // =============================================
+    async function initApp() {
+      // URL에서 ?id=XXX 파라미터 읽기
+      const urlParams = new URLSearchParams(window.location.search);
+      instructorId = urlParams.get('id');
+
+      if (!instructorId) {
+        // ID가 없으면 오류 화면 표시
+        showErrorScreen();
+        return;
+      }
+
+      // Apps Script URL이 설정되었는지 확인
+      if (!CONFIG.SCRIPT_URL || CONFIG.SCRIPT_URL.includes('여기에')) {
+        showToast('⚙️ 설정이 필요합니다. 관리자에게 문의하세요.', 'error');
+        document.getElementById('loading-screen').classList.add('hide');
+        return;
+      }
+
+      try {
+        // 강사 데이터 및 일정 로드
+        await loadInstructorData();
+        // 달력 렌더링
+        renderCalendar();
+        // 로딩 화면 숨김
+        setTimeout(() => {
+          document.getElementById('loading-screen').classList.add('hide');
+        }, 500);
+      } catch (err) {
+        showErrorScreen();
+      }
+    }
+
+    // =============================================
+    // Google Sheets에서 강사 데이터 로드
+    // =============================================
+    async function loadInstructorData() {
+      const url = `${CONFIG.SCRIPT_URL}?action=getSchedule&id=${instructorId}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.error) {
+        throw new Error(data.error);
+      }
+
+      instructorInfo = data.instructor;
+      allSchedules = data.schedules || [];
+
+      // 헤더에 강사 이름 표시
+      document.getElementById('instructor-name-badge').textContent = instructorInfo.name + ' 강사님';
+      const dot = document.getElementById('instructor-color-dot');
+      dot.style.background = instructorInfo.color;
+    }
+
+    // =============================================
+    // 달력 렌더링
+    // =============================================
+    function renderCalendar() {
+      const grid = document.getElementById('calendar-grid');
+      grid.innerHTML = '';
+
+      // 월 제목 업데이트
+      document.getElementById('month-title').textContent =
+        `${currentYear}년 ${currentMonth + 1}월`;
+      document.getElementById('summary-month-label').textContent =
+        `${currentMonth + 1}월 강의 일정`;
+
+      const today = new Date();
+      const firstDay = new Date(currentYear, currentMonth, 1);
+      const lastDay = new Date(currentYear, currentMonth + 1, 0);
+
+      // 달력 시작: 해당 월 1일의 요일 (0=일요일)
+      const startDow = firstDay.getDay();
+
+      // 이전 달 날짜 채우기
+      for (let i = 0; i < startDow; i++) {
+        const d = new Date(currentYear, currentMonth, -startDow + i + 1);
+        grid.appendChild(createDayCell(d, true));
+      }
+
+      // 이번 달 날짜
+      for (let d = 1; d <= lastDay.getDate(); d++) {
+        const date = new Date(currentYear, currentMonth, d);
+        const isToday = (
+          date.getFullYear() === today.getFullYear() &&
+          date.getMonth() === today.getMonth() &&
+          date.getDate() === today.getDate()
+        );
+        grid.appendChild(createDayCell(date, false, isToday));
+      }
+
+      // 다음 달 날짜 채우기 (6주 고정)
+      const totalCells = Math.ceil((startDow + lastDay.getDate()) / 7) * 7;
+      let nextDay = 1;
+      for (let i = startDow + lastDay.getDate(); i < totalCells; i++) {
+        const d = new Date(currentYear, currentMonth + 1, nextDay++);
+        grid.appendChild(createDayCell(d, true));
+      }
+
+      // 이번 달 일정 목록 렌더링
+      renderSummaryList();
+    }
+
+    // =============================================
+    // 날짜 셀 생성
+    // =============================================
+    function createDayCell(date, isOtherMonth, isToday = false) {
+      const cell = document.createElement('div');
+      cell.className = 'day-cell';
+
+      const dow = date.getDay();
+      if (dow === 0) cell.classList.add('sunday');
+      if (dow === 6) cell.classList.add('saturday');
+      if (isOtherMonth) cell.classList.add('other-month');
+      if (isToday) cell.classList.add('today');
+
+      // 날짜 숫자
+      const dayNum = document.createElement('div');
+      dayNum.className = 'day-number';
+      dayNum.textContent = date.getDate();
+      cell.appendChild(dayNum);
+
+      // 이 날짜의 일정들 찾기
+      const dateStr = formatDateStr(date);
+      const daySchedules = allSchedules.filter(s => s.date === dateStr);
+
+      // 최대 2개까지 칩으로 표시, 나머지는 "+N개"로
+      daySchedules.slice(0, 2).forEach(s => {
+        const chip = document.createElement('div');
+        chip.className = 'event-chip';
+        chip.style.background = instructorInfo ? instructorInfo.color + '33' : '#6366f133';
+        chip.style.color = instructorInfo ? instructorInfo.color : '#818cf8';
+        chip.style.borderLeft = `3px solid ${instructorInfo ? instructorInfo.color : '#818cf8'}`;
+        chip.innerHTML = `<i class="fas fa-circle" style="font-size:0.45rem"></i>${s.title}`;
+        chip.onclick = (e) => { e.stopPropagation(); openDetailModal(s); };
+        cell.appendChild(chip);
+      });
+
+      if (daySchedules.length > 2) {
+        const more = document.createElement('div');
+        more.className = 'more-events';
+        more.textContent = `+${daySchedules.length - 2}개 더`;
+        cell.appendChild(more);
+      }
+
+      // 날짜 클릭 → 일정 추가 모달 열기
+      if (!isOtherMonth) {
+        cell.onclick = () => openAddModal(dateStr);
+      }
+
+      return cell;
+    }
+
+    // =============================================
+    // 월 이동
+    // =============================================
+    function changeMonth(delta) {
+      currentMonth += delta;
+      if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+      if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+      renderCalendar();
+    }
+
+    function goToToday() {
+      const today = new Date();
+      currentYear = today.getFullYear();
+      currentMonth = today.getMonth();
+      renderCalendar();
+    }
+
+    // =============================================
+    // 일정 추가 모달
+    // =============================================
+    function openAddModal(dateStr = '') {
+      document.getElementById('input-date').value = dateStr || formatDateStr(new Date());
+      document.getElementById('input-title').value = '';
+      document.getElementById('input-start').value = '';
+      document.getElementById('input-end').value = '';
+      document.getElementById('input-location').value = '';
+      document.getElementById('add-modal-overlay').classList.add('show');
+      document.getElementById('input-title').focus();
+    }
+
+    function closeAddModal() {
+      document.getElementById('add-modal-overlay').classList.remove('show');
+    }
+
+    // =============================================
+    // 일정 저장 (Google Sheets에 전송)
+    // =============================================
+    async function submitSchedule(e) {
+      e.preventDefault();
+
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 저장 중...';
+
+      const schedule = {
+        date: document.getElementById('input-date').value,
+        title: document.getElementById('input-title').value.trim(),
+        startTime: document.getElementById('input-start').value,
+        endTime: document.getElementById('input-end').value,
+        location: document.getElementById('input-location').value.trim()
+      };
+
+      try {
+        const response = await fetch(CONFIG.SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            action: 'addSchedule',
+            instructorId: instructorId,
+            schedule: schedule
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // 로컬 데이터에도 추가 (새로 로드 없이 즉시 반영)
+          allSchedules.push({ ...schedule, id: data.scheduleId });
+          closeAddModal();
+          renderCalendar();
+          showToast('✅ 일정이 저장되었습니다!', 'success');
+        } else {
+          showToast('❌ ' + (data.error || '저장에 실패했습니다.'), 'error');
+        }
+      } catch (err) {
+        showToast('❌ 네트워크 오류가 발생했습니다.', 'error');
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-check"></i> 저장하기';
+    }
+
+    // =============================================
+    // 일정 상세보기 모달
+    // =============================================
+    function openDetailModal(schedule) {
+      selectedScheduleId = schedule.id;
+
+      // 날짜 포맷 (2026-05-20 → 2026년 5월 20일)
+      const [y, m, d] = schedule.date.split('-');
+      document.getElementById('detail-date').textContent = `${y}년 ${parseInt(m)}월 ${parseInt(d)}일`;
+      document.getElementById('detail-title').textContent = schedule.title;
+
+      // 시간 표시
+      if (schedule.startTime || schedule.endTime) {
+        document.getElementById('detail-time').textContent =
+          `${schedule.startTime || ''} ~ ${schedule.endTime || ''}`;
+      } else {
+        document.getElementById('detail-time').textContent = '시간 미입력';
+      }
+
+      document.getElementById('detail-location').textContent = schedule.location || '장소 미입력';
+      document.getElementById('detail-modal-overlay').classList.add('show');
+    }
+
+    function closeDetailModal() {
+      document.getElementById('detail-modal-overlay').classList.remove('show');
+    }
+
+    // =============================================
+    // 일정 삭제
+    // =============================================
+    async function deleteScheduleById() {
+      if (!confirm('이 일정을 삭제할까요?')) return;
+
+      const btn = document.getElementById('delete-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 삭제 중...';
+
+      try {
+        const response = await fetch(CONFIG.SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({
+            action: 'deleteSchedule',
+            instructorId: instructorId,
+            scheduleId: selectedScheduleId
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          // 로컬 데이터에서도 제거
+          allSchedules = allSchedules.filter(s => s.id !== selectedScheduleId);
+          closeDetailModal();
+          renderCalendar();
+          showToast('🗑️ 일정이 삭제되었습니다.', 'info');
+        } else {
+          showToast('❌ ' + (data.error || '삭제에 실패했습니다.'), 'error');
+        }
+      } catch (err) {
+        showToast('❌ 네트워크 오류가 발생했습니다.', 'error');
+      }
+
+      btn.disabled = false;
+      btn.innerHTML = '<i class="fas fa-trash"></i> 삭제';
+    }
+
+    // =============================================
+    // 이번 달 일정 요약 목록 렌더링
+    // =============================================
+    function renderSummaryList() {
+      const list = document.getElementById('summary-list');
+      const monthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+      const monthSchedules = allSchedules
+        .filter(s => s.date && s.date.startsWith(monthStr))
+        .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+
+      if (monthSchedules.length === 0) {
+        list.innerHTML = `
+          <div class="empty-state">
+            <i class="fas fa-calendar-xmark"></i>
+            <p>이번 달 등록된 강의 일정이 없습니다.<br>달력에서 날짜를 눌러 일정을 추가해보세요!</p>
+          </div>`;
+        return;
+      }
+
+      list.innerHTML = monthSchedules.map(s => {
+        const [y, m, d] = s.date.split('-');
+        const daysKr = ['일', '월', '화', '수', '목', '금', '토'];
+        const dow = new Date(s.date).getDay();
+        return `
+          <div class="summary-item" onclick="openDetailModal(${JSON.stringify(s).replace(/'/g, "\\'")})">
+            <div class="summary-date">${parseInt(m)}/${parseInt(d)} (${daysKr[dow]})</div>
+            <div class="summary-info">
+              <div class="summary-title-text">${s.title}</div>
+              <div class="summary-meta">
+                ${s.startTime ? s.startTime + (s.endTime ? ' ~ ' + s.endTime : '') : '시간 미입력'}
+                ${s.location ? ' · ' + s.location : ''}
+              </div>
+            </div>
+            <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:0.75rem"></i>
+          </div>`;
+      }).join('');
+    }
+
+    // =============================================
+    // 유틸리티 함수들
+    // =============================================
+    function formatDateStr(date) {
+      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    }
+
+    function closeModalOnOverlay(event, modalId) {
+      if (event.target.id === modalId) {
+        document.getElementById(modalId).classList.remove('show');
+      }
+    }
+
+    function showErrorScreen() {
+      document.getElementById('loading-screen').classList.add('hide');
+      document.getElementById('error-screen').classList.add('show');
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toast-container');
+      const toast = document.createElement('div');
+      toast.className = `toast ${type}`;
+      toast.textContent = message;
+      container.appendChild(toast);
+      setTimeout(() => toast.remove(), 3000);
+    }
+
+    // =============================================
+    // 앱 실행
+    // =============================================
+    initApp();
+  </script>
+
+</body>
+</html>
