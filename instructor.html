@@ -18,23 +18,24 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --bg-dark: #0f0f1a;
-      --bg-card: rgba(255,255,255,0.06);
-      --bg-card-hover: rgba(255,255,255,0.1);
-      --border: rgba(255,255,255,0.1);
-      --border-light: rgba(255,255,255,0.06);
-      --accent: #818cf8;
-      --accent-glow: rgba(129,140,248,0.3);
-      --accent-dark: #6366f1;
-      --text-primary: #f1f5f9;
-      --text-secondary: #94a3b8;
-      --text-muted: #64748b;
-      --success: #34d399;
-      --danger: #f87171;
-      --warning: #fbbf24;
-      --today-bg: rgba(129,140,248,0.15);
-      --today-border: #818cf8;
-      --shadow-glow: 0 0 40px rgba(129,140,248,0.15);
+      /* 밝은 테마 색상 시스템 */
+      --bg-dark: #f0f2ff;
+      --bg-card: #ffffff;
+      --bg-card-hover: #f5f6ff;
+      --border: rgba(99,102,241,0.18);
+      --border-light: rgba(0,0,0,0.08);
+      --accent: #6366f1;
+      --accent-glow: rgba(99,102,241,0.25);
+      --accent-dark: #4f46e5;
+      --text-primary: #1e1b4b;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --success: #16a34a;
+      --danger: #dc2626;
+      --warning: #d97706;
+      --today-bg: rgba(99,102,241,0.08);
+      --today-border: #6366f1;
+      --shadow-glow: 0 8px 40px rgba(99,102,241,0.12);
       --radius-sm: 8px;
       --radius-md: 14px;
       --radius-lg: 20px;
@@ -48,8 +49,8 @@
       min-height: 100vh;
       overflow-x: hidden;
       background-image:
-        radial-gradient(ellipse 80% 60% at 20% 0%, rgba(99,102,241,0.12) 0%, transparent 60%),
-        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(139,92,246,0.08) 0%, transparent 60%);
+        radial-gradient(ellipse 80% 60% at 20% 0%, rgba(99,102,241,0.07) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 100%, rgba(139,92,246,0.04) 0%, transparent 60%);
     }
 
     /* ======================================
@@ -99,7 +100,8 @@
       border-bottom: 1px solid var(--border-light);
       backdrop-filter: blur(12px);
       position: sticky; top: 0; z-index: 100;
-      background: rgba(15,15,26,0.85);
+      background: rgba(255,255,255,0.92);
+      box-shadow: 0 1px 20px rgba(99,102,241,0.08);
     }
     .header-left { display: flex; align-items: center; gap: 14px; }
     .header-logo {
@@ -188,7 +190,7 @@
     /* 요일 헤더 */
     .weekday-header {
       display: grid; grid-template-columns: repeat(7, 1fr);
-      background: rgba(255,255,255,0.03);
+      background: rgba(99,102,241,0.04);
       border-bottom: 1px solid var(--border-light);
     }
     .weekday-cell {
@@ -245,7 +247,7 @@
     .day-cell.today.sunday .day-number,
     .day-cell.today.saturday .day-number { color: white; }
 
-    /* 일정 이벤트 칩 */
+    /* 이벤트 칩 (확정 일정) */
     .event-chip {
       font-size: 0.72rem;
       padding: 3px 8px;
@@ -255,12 +257,30 @@
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      font-weight: 500;
-      transition: opacity 0.15s;
+      font-weight: 600;
+      transition: opacity 0.15s, transform 0.15s;
       display: flex; align-items: center; gap: 4px;
     }
-    .event-chip:hover { opacity: 0.8; }
+    .event-chip:hover { opacity: 0.75; transform: translateX(1px); }
     .event-chip i { font-size: 0.65rem; flex-shrink: 0; }
+
+    /* 가일정 칩 스타일 (테두리만, 반투명) */
+    .event-chip.tentative {
+      background: transparent !important;
+      border: 2px dashed currentColor !important;
+      opacity: 0.7;
+    }
+    .event-chip.tentative::before {
+      content: '가';
+      font-size: 0.58rem;
+      font-weight: 800;
+      background: currentColor;
+      color: white;
+      padding: 0 3px;
+      border-radius: 3px;
+      margin-right: 2px;
+      flex-shrink: 0;
+    }
 
     /* 더보기 표시 */
     .more-events {
@@ -306,12 +326,12 @@
     .modal-overlay.show { display: flex; }
 
     .modal {
-      background: #1a1a2e;
+      background: #ffffff;
       border: 1px solid var(--border);
       border-radius: var(--radius-xl);
       width: 100%; max-width: 480px;
       padding: 32px;
-      box-shadow: 0 25px 60px rgba(0,0,0,0.5), var(--shadow-glow);
+      box-shadow: 0 25px 60px rgba(99,102,241,0.15), var(--shadow-glow);
       animation: modalIn 0.3s cubic-bezier(0.34,1.56,0.64,1);
     }
     @keyframes modalIn {
@@ -351,7 +371,7 @@
     }
     .form-input {
       width: 100%;
-      background: rgba(255,255,255,0.05);
+      background: rgba(99,102,241,0.04);
       border: 1px solid var(--border);
       border-radius: var(--radius-sm);
       padding: 12px 16px;
@@ -363,7 +383,7 @@
     }
     .form-input:focus {
       border-color: var(--accent);
-      background: rgba(129,140,248,0.08);
+      background: rgba(99,102,241,0.07);
       box-shadow: 0 0 0 3px var(--accent-glow);
     }
     .form-input::placeholder { color: var(--text-muted); }
@@ -396,17 +416,39 @@
       box-shadow: 0 8px 25px rgba(99,102,241,0.5);
     }
     .btn-secondary {
-      background: var(--bg-card);
+      background: #f5f6ff;
       border: 1px solid var(--border);
       color: var(--text-secondary);
     }
     .btn-secondary:hover { background: var(--bg-card-hover); color: var(--text-primary); }
     .btn-danger {
-      background: rgba(248,113,113,0.15);
-      border: 1px solid rgba(248,113,113,0.3);
+      background: rgba(220,38,38,0.08);
+      border: 1px solid rgba(220,38,38,0.25);
       color: var(--danger);
     }
-    .btn-danger:hover { background: rgba(248,113,113,0.25); }
+    .btn-danger:hover { background: rgba(220,38,38,0.15); }
+
+    /* 일정 유형 선택 토글 (확정/가일정) */
+    .status-toggle { display: flex; gap: 8px; margin-top: 4px; }
+    .status-btn {
+      flex: 1; padding: 10px 8px;
+      border-radius: var(--radius-sm);
+      border: 2px solid var(--border);
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 0.85rem; font-weight: 500;
+      cursor: pointer; transition: all 0.2s; font-family: inherit;
+    }
+    .status-btn.confirmed.active {
+      border-color: #6366f1;
+      background: rgba(99,102,241,0.08);
+      color: #6366f1; font-weight: 700;
+    }
+    .status-btn.tentative.active {
+      border-color: #f97316;
+      background: rgba(249,115,22,0.08);
+      color: #f97316; font-weight: 700;
+    }
 
     /* ======================================
        일정 상세보기 모달
@@ -449,14 +491,14 @@
     .summary-item {
       display: flex; align-items: center; gap: 16px;
       padding: 14px 16px;
-      background: rgba(255,255,255,0.03);
+      background: rgba(99,102,241,0.04);
       border-radius: var(--radius-sm);
       border: 1px solid var(--border-light);
       cursor: pointer;
       transition: all 0.2s;
     }
     .summary-item:hover {
-      background: rgba(129,140,248,0.08);
+      background: rgba(99,102,241,0.08);
       border-color: var(--accent);
     }
     .summary-date {
@@ -621,6 +663,18 @@
             <input type="time" class="form-input" id="input-start" placeholder="시작">
             <input type="time" class="form-input" id="input-end" placeholder="종료">
           </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">일정 유형</label>
+          <div class="status-toggle">
+            <button type="button" class="status-btn confirmed active" id="btn-confirmed" onclick="setStatus('confirmed')">
+              ✅ 확정 일정
+            </button>
+            <button type="button" class="status-btn tentative" id="btn-tentative" onclick="setStatus('tentative')">
+              🔸 가일정 (미확정)
+            </button>
+          </div>
+          <input type="hidden" id="input-status" value="confirmed">
         </div>
         <div class="form-group">
           <label class="form-label">장소</label>
@@ -838,10 +892,12 @@
       daySchedules.slice(0, 2).forEach(s => {
         const chip = document.createElement('div');
         chip.className = 'event-chip';
-        chip.style.background = instructorInfo ? instructorInfo.color + '33' : '#6366f133';
-        chip.style.color = instructorInfo ? instructorInfo.color : '#818cf8';
-        chip.style.borderLeft = `3px solid ${instructorInfo ? instructorInfo.color : '#818cf8'}`;
-        chip.innerHTML = `<i class="fas fa-circle" style="font-size:0.45rem"></i>${s.title}`;
+        // 가일정이면 tentative 클래스 추가
+        if (s.status === 'tentative') chip.classList.add('tentative');
+        chip.style.background = instructorInfo ? instructorInfo.color + '22' : '#6366f133';
+        chip.style.color = instructorInfo ? instructorInfo.color : '#6366f1';
+        chip.style.borderLeft = s.status === 'tentative' ? 'none' : `3px solid ${instructorInfo ? instructorInfo.color : '#6366f1'}`;
+        chip.innerHTML = `<i class="fas fa-circle" style="font-size:0.4rem"></i>${s.title}`;
         chip.onclick = (e) => { e.stopPropagation(); openDetailModal(s); };
         cell.appendChild(chip);
       });
@@ -887,6 +943,8 @@
       document.getElementById('input-start').value = '';
       document.getElementById('input-end').value = '';
       document.getElementById('input-location').value = '';
+      // 상태 초기화 (항상 '확정'으로 시작)
+      setStatus('confirmed');
       document.getElementById('add-modal-overlay').classList.add('show');
       document.getElementById('input-title').focus();
     }
@@ -910,7 +968,8 @@
         title: document.getElementById('input-title').value.trim(),
         startTime: document.getElementById('input-start').value,
         endTime: document.getElementById('input-end').value,
-        location: document.getElementById('input-location').value.trim()
+        location: document.getElementById('input-location').value.trim(),
+        status: document.getElementById('input-status').value // 확정/가일정
       };
 
       try {
@@ -949,12 +1008,16 @@
     function openDetailModal(schedule) {
       selectedScheduleId = schedule.id;
 
-      // 날짜 포맷 (2026-05-20 → 2026년 5월 20일)
       const [y, m, d] = schedule.date.split('-');
       document.getElementById('detail-date').textContent = `${y}년 ${parseInt(m)}월 ${parseInt(d)}일`;
       document.getElementById('detail-title').textContent = schedule.title;
 
-      // 시간 표시
+      // 확정/가일정 표시
+      const statusBadge = schedule.status === 'tentative'
+        ? '<span style="font-size:0.75rem;padding:2px 8px;background:rgba(249,115,22,0.12);color:#f97316;border-radius:50px;font-weight:600">🔸 가일정</span>'
+        : '<span style="font-size:0.75rem;padding:2px 8px;background:rgba(99,102,241,0.1);color:#6366f1;border-radius:50px;font-weight:600">✅ 확정</span>';
+      document.getElementById('detail-title').innerHTML = `${schedule.title} ${statusBadge}`;
+
       if (schedule.startTime || schedule.endTime) {
         document.getElementById('detail-time').textContent =
           `${schedule.startTime || ''} ~ ${schedule.endTime || ''}`;
@@ -1008,6 +1071,17 @@
 
       btn.disabled = false;
       btn.innerHTML = '<i class="fas fa-trash"></i> 삭제';
+    }
+
+    // =============================================
+    // 일정 유형 토글 (setStatus)
+    // =============================================
+    function setStatus(status) {
+      document.getElementById('input-status').value = status;
+      document.getElementById('btn-confirmed').className =
+        'status-btn confirmed' + (status === 'confirmed' ? ' active' : '');
+      document.getElementById('btn-tentative').className =
+        'status-btn tentative' + (status === 'tentative' ? ' active' : '');
     }
 
     // =============================================
