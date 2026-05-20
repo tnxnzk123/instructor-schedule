@@ -1032,7 +1032,9 @@
       list.innerHTML = monthSchedules.map(s => {
         const [y, m, d] = s.date.split('-');
         const daysKr = ['일', '월', '화', '수', '목', '금', '토'];
-        const dow = new Date(s.date).getDay();
+        // 날짜 파싱: "2026-05-20" → 로컬 시간 기준으로 처리 (UTC 변환 방지)
+        const [dy, dm, dd] = s.date.split('-').map(Number);
+        const dow = new Date(dy, dm - 1, dd).getDay(); // 로컬 시간 기준으로 요일 계산
         return `
           <div class="summary-item" onclick="openDetailModal(${JSON.stringify(s).replace(/'/g, "\\'")})">
             <div class="summary-date">${parseInt(m)}/${parseInt(d)} (${daysKr[dow]})</div>
