@@ -463,6 +463,17 @@
       padding: 0 3px; border-radius: 3px; margin-right: 2px; flex-shrink: 0;
     }
 
+    /* 강의 가능일 바 (관리자 달력) */
+    .day-cell.has-availability { background: rgba(22,163,74,0.03) !important; }
+    .availability-bar {
+      font-size: 0.68rem; padding: 2px 6px; border-radius: 4px;
+      background: rgba(22,163,74,0.1); color: #16a34a;
+      border: 1px solid rgba(22,163,74,0.25); font-weight: 600;
+      margin-bottom: 2px; display: flex; align-items: center; gap: 3px;
+      cursor: pointer; white-space: nowrap; overflow: hidden;
+    }
+    .availability-bar:hover { background: rgba(22,163,74,0.2); }
+
     /* 색상 선택 */
     .color-picker-row { display: flex; gap: 8px; flex-wrap: wrap; }
     .color-option {
@@ -846,7 +857,8 @@
     function updateStats() {
       document.getElementById('stat-instructors').textContent = allInstructors.length;
       const monthStr = `${currentYear}-${String(currentMonth+1).padStart(2,'0')}`;
-      const monthCount = allSchedules.filter(s => s.date && s.date.startsWith(monthStr)).length;
+      // 강의 가능일 제외하고 실제 강의 건수만 카운트
+      const monthCount = allSchedules.filter(s => s.date && s.date.startsWith(monthStr) && s.status !== 'available').length;
       document.getElementById('stat-month-schedules').textContent = monthCount;
     }
 
@@ -928,10 +940,31 @@
         s.date === dateStr && !hiddenInstructors.has(s.instructorId)
       );
 
-      daySchedules.slice(0, 3).forEach(s => {
+      // 강의 가능일과 강의 일정 분리
+      const availableEntries = daySchedules.filter(s => s.status === 'available');
+      const lectureEntries   = daySchedules.filter(s => s.status !== 'available');
+
+      // 🟢 강의 가능일 바 표시
+      if (availableEntries.length > 0) {
+        cell.classList.add('has-availability');
+        // 강사가 여러 명이면 각 강사의 가능일을 다 표시
+        availableEntries.forEach(s => {
+          const bar = document.createElement('div');
+          bar.className = 'availability-bar';
+          const memo = s.title !== '강의 가능' ? s.title : '';
+          bar.innerHTML = `<span style="font-size:0.55rem;font-weight:800;border-radius:2px;padding:0 2px;background:currentColor;color:white">${s.instructorName.charAt(0)}</span>🟢 가능${memo ? ' · ' + memo : ''}`;
+          bar.style.color = s.instructorColor || '#16a34a';
+          bar.style.background = (s.instructorColor || '#16a34a') + '15';
+          bar.style.borderColor = (s.instructorColor || '#16a34a') + '40';
+          bar.onclick = () => openDetailModal(s);
+          cell.appendChild(bar);
+        });
+      }
+
+      // 📝 강의 일정 칩 (최대 3개)
+      lectureEntries.slice(0, 3).forEach(s => {
         const chip = document.createElement('div');
         chip.className = 'event-chip';
-        // 가일정이면 tentative 클래스 추가
         if (s.status === 'tentative') chip.classList.add('tentative');
         chip.style.background = s.instructorColor + '20';
         chip.style.color = s.instructorColor;
@@ -941,10 +974,10 @@
         cell.appendChild(chip);
       });
 
-      if (daySchedules.length > 3) {
+      if (lectureEntries.length > 3) {
         const more = document.createElement('div');
         more.className = 'more-events';
-        more.textContent = `+${daySchedules.length - 3}개 더`;
+        more.textContent = `+${lectureEntries.length - 3}개 더`;
         cell.appendChild(more);
       }
 
@@ -989,7 +1022,8 @@
 
       tbody.innerHTML = allInstructors.map(inst => {
         const link = generateInstructorLink(inst.id);
-        const monthCount = allSchedules.filter(s => s.instructorId === inst.id && s.date.startsWith(monthStr)).length;
+        const monthLectures = allSchedules.filter(s => s.instructorId === inst.id && s.date.startsWith(monthStr) && s.status !== 'available').length;
+        const monthAvail = allSchedules.filter(s => s.instructorId === inst.id && s.date.startsWith(monthStr) && s.status === 'available').length;
         return `
           <tr>
             <td>
@@ -999,7 +1033,7 @@
               </div>
             </td>
             <td><div class="link-url">${link}</div></td>
-            <td><span style="font-weight:600;color:var(--accent)">${monthCount}건</span></td>
+            <td><span style="font-weight:600;color:var(--accent)">${monthLectures}강의</span>${monthAvail > 0 ? ` <span style="font-size:0.75rem;color:#16a34a;font-weight:600">🟢${monthAvail}일</span>` : ''}</td>
             <td style="display:flex;gap:6px;">
               <button class="copy-btn" onclick="copyLink('${link}')">
                 <i class="fas fa-copy"></i> 링크 복사
@@ -1074,7 +1108,18 @@
       const [y, m, d] = schedule.date.split('-');
       document.getElementById('d-instructor').textContent = schedule.instructorName;
       document.getElementById('d-date').textContent = `${y}년 ${parseInt(m)}월 ${parseInt(d)}일`;
-      document.getElementById('d-title').textContent = schedule.title;
+
+      // 상태 배지 (확정 / 가일정 / 강의 가능일)
+      let statusBadge;
+      if (schedule.status === 'available') {
+        statusBadge = '<span style="font-size:0.72rem;padding:2px 8px;background:rgba(22,163,74,0.1);color:#16a34a;border-radius:50px;font-weight:600">🟢 강의 가능일</span>';
+      } else if (schedule.status === 'tentative') {
+        statusBadge = '<span style="font-size:0.72rem;padding:2px 8px;background:rgba(249,115,22,0.12);color:#f97316;border-radius:50px;font-weight:600">🔸 가일정</span>';
+      } else {
+        statusBadge = '<span style="font-size:0.72rem;padding:2px 8px;background:rgba(99,102,241,0.1);color:#6366f1;border-radius:50px;font-weight:600">✅ 확정</span>';
+      }
+      document.getElementById('d-title').innerHTML = `${schedule.title} ${statusBadge}`;
+
       document.getElementById('d-time').textContent =
         schedule.startTime ? `${schedule.startTime}${schedule.endTime ? ' ~ ' + schedule.endTime : ''}` : '시간 미입력';
       document.getElementById('d-location').textContent = schedule.location || '장소 미입력';

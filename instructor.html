@@ -451,6 +451,46 @@
     }
 
     /* ======================================
+       모드 탭 (강의 일정 / 강의 가능일)
+    ====================================== */
+    .modal-mode-tabs {
+      display: flex; gap: 0; margin-bottom: 20px;
+      border-radius: var(--radius-sm); overflow: hidden;
+      border: 2px solid var(--border);
+    }
+    .modal-mode-tab {
+      flex: 1; padding: 11px 8px;
+      border: none; background: transparent;
+      color: var(--text-muted); font-size: 0.85rem;
+      font-weight: 600; cursor: pointer; font-family: inherit;
+      transition: all 0.2s;
+    }
+    .modal-mode-tab:not(:last-child) { border-right: 2px solid var(--border); }
+    .modal-mode-tab.schedule.active { background: rgba(99,102,241,0.08); color: #6366f1; }
+    .modal-mode-tab.available.active { background: rgba(22,163,74,0.08); color: #16a34a; }
+
+    /* 강의 가능일 등록 안내 박스 */
+    .available-info-box {
+      text-align: center; padding: 28px 16px;
+      background: rgba(22,163,74,0.05);
+      border: 1px dashed rgba(22,163,74,0.3);
+      border-radius: var(--radius-md);
+    }
+    .available-icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .available-desc { color: var(--text-secondary); font-size: 0.9rem; line-height: 1.6; }
+
+    /* 달력에서 강의 가능일 표시 */
+    .day-cell.has-availability { background: rgba(22,163,74,0.04) !important; }
+    .availability-bar {
+      font-size: 0.7rem; padding: 2px 7px; border-radius: 4px;
+      background: rgba(22,163,74,0.1); color: #16a34a;
+      border: 1px solid rgba(22,163,74,0.25); font-weight: 600;
+      margin-bottom: 2px; display: flex; align-items: center; gap: 3px;
+      cursor: pointer; white-space: nowrap; overflow: hidden;
+    }
+    .availability-bar:hover { background: rgba(22,163,74,0.2); }
+
+    /* ======================================
        일정 상세보기 모달
     ====================================== */
     .detail-field {
@@ -649,37 +689,58 @@
       </div>
 
       <form id="add-form" onsubmit="submitSchedule(event)">
+
+        <!-- 📌 모드 탭: 강의 일정 or 강의 가능일 선택 -->
+        <div class="modal-mode-tabs">
+          <button type="button" class="modal-mode-tab schedule active" id="tab-schedule" onclick="setModalMode('schedule')">📝 강의 일정</button>
+          <button type="button" class="modal-mode-tab available" id="tab-available" onclick="setModalMode('available')">🟢 강의 가능일</button>
+        </div>
+
+        <!-- 📅 날짜: 두 모드 공통 -->
         <div class="form-group">
-          <label class="form-label">강의 날짜 *</label>
+          <label class="form-label">날짜 *</label>
           <input type="date" class="form-input" id="input-date" required>
         </div>
-        <div class="form-group">
-          <label class="form-label">강의 제목 *</label>
-          <input type="text" class="form-input" id="input-title" placeholder="예: AI 기초 과정 3주차" required maxlength="50">
-        </div>
-        <div class="form-group">
-          <label class="form-label">강의 시간</label>
-          <div class="time-row">
-            <input type="time" class="form-input" id="input-start" placeholder="시작">
-            <input type="time" class="form-input" id="input-end" placeholder="종료">
+
+        <!-- 📝 강의 일정 입력 영역 -->
+        <div id="schedule-form-content">
+          <div class="form-group">
+            <label class="form-label">강의 제목 *</label>
+            <input type="text" class="form-input" id="input-title" placeholder="예: AI 기초 과정 3주차" maxlength="50">
+          </div>
+          <div class="form-group">
+            <label class="form-label">강의 시간</label>
+            <div class="time-row">
+              <input type="time" class="form-input" id="input-start" placeholder="시작">
+              <input type="time" class="form-input" id="input-end" placeholder="종료">
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">일정 유형</label>
+            <div class="status-toggle">
+              <button type="button" class="status-btn confirmed active" id="btn-confirmed" onclick="setStatus('confirmed')">✅ 확정 일정</button>
+              <button type="button" class="status-btn tentative" id="btn-tentative" onclick="setStatus('tentative')">🔸 가일정 (미확정)</button>
+            </div>
+            <input type="hidden" id="input-status" value="confirmed">
+          </div>
+          <div class="form-group">
+            <label class="form-label">장소</label>
+            <input type="text" class="form-input" id="input-location" placeholder="예: 강남 교육장 3층" maxlength="50">
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">일정 유형</label>
-          <div class="status-toggle">
-            <button type="button" class="status-btn confirmed active" id="btn-confirmed" onclick="setStatus('confirmed')">
-              ✅ 확정 일정
-            </button>
-            <button type="button" class="status-btn tentative" id="btn-tentative" onclick="setStatus('tentative')">
-              🔸 가일정 (미확정)
-            </button>
+
+        <!-- 🟢 강의 가능일 입력 영역 -->
+        <div id="available-form-content" style="display:none">
+          <div class="available-info-box">
+            <div class="available-icon">🟢</div>
+            <p class="available-desc">이 날 강의 배정이 <strong>가능</strong>함을<br>관리자에게 알려드립니다.</p>
           </div>
-          <input type="hidden" id="input-status" value="confirmed">
+          <div class="form-group" style="margin-top:16px">
+            <label class="form-label">메모 (선택사항)</label>
+            <input type="text" class="form-input" id="input-avail-memo" placeholder="예: 오전만 가능, 서울 내 한정" maxlength="50">
+          </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">장소</label>
-          <input type="text" class="form-input" id="input-location" placeholder="예: 강남 교육장 3층" maxlength="50">
-        </div>
+
         <div class="form-actions">
           <button type="button" class="btn btn-secondary" onclick="closeAddModal()">취소</button>
           <button type="submit" class="btn btn-primary" id="submit-btn">
@@ -759,6 +820,7 @@
     let instructorInfo = null;    // 강사 이름, 색상 정보
     let allSchedules = [];        // 이 강사의 모든 일정 데이터
     let selectedScheduleId = '';  // 상세보기 중인 일정 ID
+    let modalMode = 'schedule';       // 현재 모달 모드: 'schedule' | 'available'
 
     // =============================================
     // 앱 시작: URL에서 강사 ID 읽고 데이터 로드
@@ -888,11 +950,25 @@
       const dateStr = formatDateStr(date);
       const daySchedules = allSchedules.filter(s => s.date === dateStr);
 
-      // 최대 2개까지 칩으로 표시, 나머지는 "+N개"로
-      daySchedules.slice(0, 2).forEach(s => {
+      // 강의 가능일과 강의 일정 분리
+      const availableEntries = daySchedules.filter(s => s.status === 'available');
+      const lectureEntries   = daySchedules.filter(s => s.status !== 'available');
+
+      // 🟢 강의 가능일 표시 (초록 바 + 셀 배경)
+      if (availableEntries.length > 0) {
+        cell.classList.add('has-availability');
+        const bar = document.createElement('div');
+        bar.className = 'availability-bar';
+        const memo = availableEntries[0].title !== '강의 가능' ? availableEntries[0].title : '';
+        bar.innerHTML = `🟢 강의 가능${memo ? ' · ' + memo : ''}`;
+        bar.onclick = (e) => { e.stopPropagation(); openDetailModal(availableEntries[0]); };
+        cell.appendChild(bar);
+      }
+
+      // 📝 강의 일정 칩 (최대 2개)
+      lectureEntries.slice(0, 2).forEach(s => {
         const chip = document.createElement('div');
         chip.className = 'event-chip';
-        // 가일정이면 tentative 클래스 추가
         if (s.status === 'tentative') chip.classList.add('tentative');
         chip.style.background = instructorInfo ? instructorInfo.color + '22' : '#6366f133';
         chip.style.color = instructorInfo ? instructorInfo.color : '#6366f1';
@@ -902,10 +978,10 @@
         cell.appendChild(chip);
       });
 
-      if (daySchedules.length > 2) {
+      if (lectureEntries.length > 2) {
         const more = document.createElement('div');
         more.className = 'more-events';
-        more.textContent = `+${daySchedules.length - 2}개 더`;
+        more.textContent = `+${lectureEntries.length - 2}개 더`;
         cell.appendChild(more);
       }
 
@@ -943,7 +1019,9 @@
       document.getElementById('input-start').value = '';
       document.getElementById('input-end').value = '';
       document.getElementById('input-location').value = '';
-      // 상태 초기화 (항상 '확정'으로 시작)
+      document.getElementById('input-avail-memo').value = '';
+      // 모드 초기화 (항상 '강의 일정' 모드로 시작)
+      setModalMode('schedule');
       setStatus('confirmed');
       document.getElementById('add-modal-overlay').classList.add('show');
       document.getElementById('input-title').focus();
@@ -963,14 +1041,35 @@
       btn.disabled = true;
       btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 저장 중...';
 
-      const schedule = {
-        date: document.getElementById('input-date').value,
-        title: document.getElementById('input-title').value.trim(),
-        startTime: document.getElementById('input-start').value,
-        endTime: document.getElementById('input-end').value,
-        location: document.getElementById('input-location').value.trim(),
-        status: document.getElementById('input-status').value // 확정/가일정
-      };
+      // 모드에 따라 저장할 데이터 구성
+      let schedule;
+      if (modalMode === 'available') {
+        // 🟢 강의 가능일 등록
+        const memo = document.getElementById('input-avail-memo').value.trim();
+        schedule = {
+          date: document.getElementById('input-date').value,
+          title: memo || '강의 가능',
+          startTime: '', endTime: '', location: '',
+          status: 'available'
+        };
+      } else {
+        // 📝 강의 일정 등록 (기존)
+        const title = document.getElementById('input-title').value.trim();
+        if (!title) {
+          showToast('⚠️ 강의 제목을 입력해주세요.', 'error');
+          btn.disabled = false;
+          btn.innerHTML = '<i class="fas fa-check"></i> 저장하기';
+          return;
+        }
+        schedule = {
+          date: document.getElementById('input-date').value,
+          title: title,
+          startTime: document.getElementById('input-start').value,
+          endTime: document.getElementById('input-end').value,
+          location: document.getElementById('input-location').value.trim(),
+          status: document.getElementById('input-status').value
+        };
+      }
 
       try {
         const response = await fetch(CONFIG.SCRIPT_URL, {
@@ -1012,10 +1111,15 @@
       document.getElementById('detail-date').textContent = `${y}년 ${parseInt(m)}월 ${parseInt(d)}일`;
       document.getElementById('detail-title').textContent = schedule.title;
 
-      // 확정/가일정 표시
-      const statusBadge = schedule.status === 'tentative'
-        ? '<span style="font-size:0.75rem;padding:2px 8px;background:rgba(249,115,22,0.12);color:#f97316;border-radius:50px;font-weight:600">🔸 가일정</span>'
-        : '<span style="font-size:0.75rem;padding:2px 8px;background:rgba(99,102,241,0.1);color:#6366f1;border-radius:50px;font-weight:600">✅ 확정</span>';
+      // 상태 배지 표시 (확정 / 가일정 / 강의 가능일)
+      let statusBadge;
+      if (schedule.status === 'available') {
+        statusBadge = '<span style="font-size:0.75rem;padding:2px 8px;background:rgba(22,163,74,0.1);color:#16a34a;border-radius:50px;font-weight:600">🟢 강의 가능일</span>';
+      } else if (schedule.status === 'tentative') {
+        statusBadge = '<span style="font-size:0.75rem;padding:2px 8px;background:rgba(249,115,22,0.12);color:#f97316;border-radius:50px;font-weight:600">🔸 가일정</span>';
+      } else {
+        statusBadge = '<span style="font-size:0.75rem;padding:2px 8px;background:rgba(99,102,241,0.1);color:#6366f1;border-radius:50px;font-weight:600">✅ 확정</span>';
+      }
       document.getElementById('detail-title').innerHTML = `${schedule.title} ${statusBadge}`;
 
       if (schedule.startTime || schedule.endTime) {
@@ -1085,6 +1189,30 @@
     }
 
     // =============================================
+    // 모달 모드 전환 (강의 일정 / 강의 가능일)
+    // =============================================
+    function setModalMode(mode) {
+      modalMode = mode;
+      document.getElementById('tab-schedule').className =
+        'modal-mode-tab schedule' + (mode === 'schedule' ? ' active' : '');
+      document.getElementById('tab-available').className =
+        'modal-mode-tab available' + (mode === 'available' ? ' active' : '');
+      document.getElementById('schedule-form-content').style.display = mode === 'schedule' ? '' : 'none';
+      document.getElementById('available-form-content').style.display = mode === 'available' ? '' : 'none';
+      // 제출 버튼 색상 변경
+      const submitBtn = document.getElementById('submit-btn');
+      if (mode === 'available') {
+        submitBtn.style.background = 'linear-gradient(135deg, #16a34a, #22c55e)';
+        submitBtn.style.boxShadow = '0 4px 20px rgba(22,163,74,0.4)';
+        submitBtn.innerHTML = '🟢 가능일 등록';
+      } else {
+        submitBtn.style.background = '';
+        submitBtn.style.boxShadow = '';
+        submitBtn.innerHTML = '<i class="fas fa-check"></i> 저장하기';
+      }
+    }
+
+    // =============================================
     // 이번 달 일정 요약 목록 렌더링
     // =============================================
     function renderSummaryList() {
@@ -1092,36 +1220,49 @@
       const monthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
       const monthSchedules = allSchedules
         .filter(s => s.date && s.date.startsWith(monthStr))
-        .sort((a, b) => a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+        .sort((a, b) => a.date.localeCompare(b.date) || (a.startTime||'').localeCompare(b.startTime||''));
 
-      if (monthSchedules.length === 0) {
-        list.innerHTML = `
-          <div class="empty-state">
-            <i class="fas fa-calendar-xmark"></i>
-            <p>이번 달 등록된 강의 일정이 없습니다.<br>달력에서 날짜를 눌러 일정을 추가해보세요!</p>
-          </div>`;
+      // 강의 일정 / 강의 가능일 분리
+      const lectureList   = monthSchedules.filter(s => s.status !== 'available');
+      const availableList = monthSchedules.filter(s => s.status === 'available');
+
+      // 제목에 가능일 수 뱃지 표시
+      const availBadge = availableList.length > 0
+        ? `<span style="font-size:0.78rem;padding:2px 10px;background:rgba(22,163,74,0.1);color:#16a34a;border-radius:50px;font-weight:600;margin-left:8px">🟢 가능일 ${availableList.length}일</span>`
+        : '';
+      document.getElementById('summary-month-label').innerHTML = `${currentMonth + 1}월 강의 일정 ${availBadge}`;
+
+      if (lectureList.length === 0 && availableList.length === 0) {
+        list.innerHTML = `<div class="empty-state"><i class="fas fa-calendar-xmark"></i><p>이번 달 등록된 일정이 없습니다.<br>달력에서 날짜를 눌러 일정을 추가해보세요!</p></div>`;
         return;
       }
 
-      list.innerHTML = monthSchedules.map(s => {
-        const [y, m, d] = s.date.split('-');
-        const daysKr = ['일', '월', '화', '수', '목', '금', '토'];
-        // 날짜 파싱: "2026-05-20" → 로컬 시간 기준으로 처리 (UTC 변환 방지)
-        const [dy, dm, dd] = s.date.split('-').map(Number);
-        const dow = new Date(dy, dm - 1, dd).getDay(); // 로컬 시간 기준으로 요일 계산
-        return `
-          <div class="summary-item" onclick="openDetailModal(${JSON.stringify(s).replace(/'/g, "\\'")})">
-            <div class="summary-date">${parseInt(m)}/${parseInt(d)} (${daysKr[dow]})</div>
-            <div class="summary-info">
-              <div class="summary-title-text">${s.title}</div>
-              <div class="summary-meta">
-                ${s.startTime ? s.startTime + (s.endTime ? ' ~ ' + s.endTime : '') : '시간 미입력'}
-                ${s.location ? ' · ' + s.location : ''}
-              </div>
-            </div>
-            <i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:0.75rem"></i>
-          </div>`;
-      }).join('');
+      const daysKr = ['일', '월', '화', '수', '목', '금', '토'];
+
+      // 강의 일정 목록
+      const lectureHtml = lectureList.length > 0
+        ? lectureList.map(s => {
+            const [y, m, d] = s.date.split('-');
+            const [dy, dm, dd] = s.date.split('-').map(Number);
+            const dow = new Date(dy, dm - 1, dd).getDay();
+            const icon = s.status === 'tentative' ? '🔸' : '✅';
+            return `<div class="summary-item" onclick="openDetailModal(${JSON.stringify(s).replace(/'/g, "\\'")})"><div class="summary-date">${parseInt(m)}/${parseInt(d)} (${daysKr[dow]})</div><div class="summary-info"><div class="summary-title-text">${icon} ${s.title}</div><div class="summary-meta">${s.startTime ? s.startTime + (s.endTime ? ' ~ ' + s.endTime : '') : '시간 미입력'}${s.location ? ' · ' + s.location : ''}</div></div><i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:0.75rem"></i></div>`;
+          }).join('')
+        : `<div class="empty-state" style="padding:20px"><i class="fas fa-calendar-xmark"></i><p>이번 달 강의 일정이 없습니다.</p></div>`;
+
+      // 강의 가능일 목록
+      const availableHtml = availableList.length > 0
+        ? `<div style="font-size:0.78rem;font-weight:700;color:#16a34a;margin:16px 0 6px;padding:0 2px">🟢 강의 가능일</div>` +
+          availableList.map(s => {
+            const [y, m, d] = s.date.split('-');
+            const [dy, dm, dd] = s.date.split('-').map(Number);
+            const dow = new Date(dy, dm - 1, dd).getDay();
+            const memo = s.title !== '강의 가능' ? s.title : '배정 가능 상태';
+            return `<div class="summary-item" onclick="openDetailModal(${JSON.stringify(s).replace(/'/g, "\\'")})" style="border-color:rgba(22,163,74,0.25);background:rgba(22,163,74,0.04)"><div class="summary-date" style="color:#16a34a">${parseInt(m)}/${parseInt(d)} (${daysKr[dow]})</div><div class="summary-info"><div class="summary-title-text">🟢 강의 가능</div><div class="summary-meta">${memo}</div></div><i class="fas fa-chevron-right" style="color:var(--text-muted);font-size:0.75rem"></i></div>`;
+          }).join('')
+        : '';
+
+      list.innerHTML = lectureHtml + availableHtml;
     }
 
     // =============================================
