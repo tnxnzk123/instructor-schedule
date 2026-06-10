@@ -9,6 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <!-- 아이콘 라이브러리 -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Excel 파일 처리 라이브러리 (SheetJS) - CDN 방식으로 설치 없이 바로 사용 -->
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
   <!-- 공통 설정 파일 -->
   <script src="config.js"></script>
   <style>
@@ -292,25 +294,40 @@
     /* ======================================
        일정 추가 버튼 (플로팅)
     ====================================== */
-    .fab {
+    /* ======================================
+       FAB 버튼 그룹 (Excel 업로드 + 일정 추가)
+    ====================================== */
+    .fab-group {
       position: fixed; bottom: 32px; right: 32px;
+      display: flex; flex-direction: column; align-items: flex-end; gap: 12px;
+      z-index: 200;
+    }
+    .fab {
       width: 60px; height: 60px;
       background: linear-gradient(135deg, #6366f1, #8b5cf6);
-      border: none;
-      border-radius: 50%;
-      color: white;
-      font-size: 1.5rem;
-      cursor: pointer;
+      border: none; border-radius: 50%; color: white;
+      font-size: 1.5rem; cursor: pointer;
       box-shadow: 0 8px 30px rgba(99,102,241,0.5);
       display: flex; align-items: center; justify-content: center;
       transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
-      z-index: 200;
     }
-    .fab:hover {
-      transform: scale(1.1) translateY(-2px);
-      box-shadow: 0 12px 40px rgba(99,102,241,0.6);
-    }
+    .fab:hover { transform: scale(1.1) translateY(-2px); box-shadow: 0 12px 40px rgba(99,102,241,0.6); }
     .fab:active { transform: scale(0.95); }
+    .fab-small {
+      display: flex; align-items: center; gap: 8px;
+      padding: 11px 20px; background: white;
+      border: 1.5px solid var(--border); border-radius: 50px;
+      color: var(--text-secondary); font-size: 0.82rem; font-weight: 600;
+      cursor: pointer; font-family: inherit;
+      box-shadow: 0 4px 20px rgba(99,102,241,0.12);
+      transition: all 0.2s; white-space: nowrap;
+    }
+    .fab-small:hover {
+      background: rgba(34,197,94,0.06); color: #16a34a;
+      border-color: #16a34a; transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(22,163,74,0.2);
+    }
+    .fab-small i { color: #16a34a; }
 
     /* ======================================
        모달 (일정 추가/상세보기)
@@ -581,6 +598,42 @@
     @keyframes toastOut { to { opacity:0; transform:translateY(-10px); } }
 
     /* ======================================
+       수정 버튼
+    ====================================== */
+    .btn-edit {
+      background: rgba(99,102,241,0.08);
+      border: 1px solid rgba(99,102,241,0.25); color: #6366f1;
+    }
+    .btn-edit:hover { background: rgba(99,102,241,0.15); }
+
+    /* ======================================
+       Excel 업로드 모달 스타일
+    ====================================== */
+    .excel-upload-zone {
+      border: 2px dashed var(--border); border-radius: var(--radius-md);
+      padding: 36px 20px; text-align: center;
+      cursor: pointer; transition: all 0.2s; color: var(--text-muted);
+    }
+    .excel-upload-zone:hover { border-color: #16a34a; background: rgba(22,163,74,0.04); color: #16a34a; }
+    .excel-upload-zone i { font-size: 2.2rem; margin-bottom: 12px; display: block; color: #16a34a; opacity: 0.7; }
+    .excel-upload-zone:hover i { opacity: 1; }
+    .excel-preview-wrap { overflow: auto; max-height: 260px; border-radius: var(--radius-sm); border: 1px solid var(--border); margin-top: 12px; }
+    .excel-preview-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    .excel-preview-table th {
+      background: rgba(99,102,241,0.07); color: var(--accent);
+      font-weight: 700; padding: 8px 10px; text-align: left;
+      white-space: nowrap; border-bottom: 2px solid var(--border);
+      position: sticky; top: 0;
+    }
+    .excel-preview-table td { padding: 7px 10px; border-bottom: 1px solid var(--border-light); white-space: nowrap; }
+    .excel-preview-table tr.row-error td { background: rgba(220,38,38,0.05); }
+    .excel-template-tip {
+      margin-top: 14px; padding: 12px 14px;
+      background: rgba(99,102,241,0.05); border: 1px solid rgba(99,102,241,0.15);
+      border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text-secondary); line-height: 1.7;
+    }
+
+    /* ======================================
        모바일 반응형
     ====================================== */
     @media (max-width: 640px) {
@@ -670,10 +723,15 @@
 
   </main>
 
-  <!-- ➕ 일정 추가 플로팅 버튼 -->
-  <button class="fab" onclick="openAddModal()" title="일정 추가">
-    <i class="fas fa-plus"></i>
-  </button>
+  <!-- ➕➕ 플로팅 버튼 그룹 (Excel 업로드 + 일정 추가) -->
+  <div class="fab-group">
+    <button class="fab-small" onclick="openExcelModal()" title="Excel 파일로 일정 일괄 등록">
+      <i class="fas fa-file-excel"></i> Excel 업로드
+    </button>
+    <button class="fab" onclick="openAddModal()" title="일정 추가">
+      <i class="fas fa-plus"></i>
+    </button>
+  </div>
 
   <!-- ======================================
        📝 일정 추가 모달
@@ -681,7 +739,7 @@
   <div class="modal-overlay" id="add-modal-overlay" onclick="closeModalOnOverlay(event, 'add-modal-overlay')">
     <div class="modal">
       <div class="modal-header">
-        <div class="modal-title">
+        <div class="modal-title" id="add-modal-title">
           <i class="fas fa-calendar-plus"></i>
           새 강의 일정 추가
         </div>
@@ -797,9 +855,61 @@
 
       <div class="form-actions" style="margin-top:24px;">
         <button class="btn btn-secondary" onclick="closeDetailModal()">닫기</button>
+        <button class="btn btn-edit" onclick="openEditModal()" id="edit-btn">
+          <i class="fas fa-edit"></i> 수정
+        </button>
         <button class="btn btn-danger" onclick="deleteScheduleById()" id="delete-btn">
           <i class="fas fa-trash"></i> 삭제
         </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================
+       📂 Excel 업로드 모달
+  ====================================== -->
+  <div class="modal-overlay" id="excel-modal-overlay" onclick="closeModalOnOverlay(event, 'excel-modal-overlay')">
+    <div class="modal" style="max-width:600px">
+      <div class="modal-header">
+        <div class="modal-title">
+          <i class="fas fa-file-excel" style="color:#16a34a"></i>
+          Excel 일정 일괄 업로드
+        </div>
+        <button class="modal-close" onclick="closeExcelModal()"><i class="fas fa-xmark"></i></button>
+      </div>
+
+      <!-- 단계 1: 파일 선택 -->
+      <div id="excel-step-1">
+        <div class="excel-upload-zone" onclick="document.getElementById('excel-file-input').click()">
+          <i class="fas fa-cloud-arrow-up"></i>
+          <p style="font-weight:600;margin-bottom:6px">Excel 파일을 클릭하여 선택하세요</p>
+          <p style="font-size:0.8rem">.xlsx 형식 지원 &nbsp;·&nbsp; 첫 번째 행(헤더)은 자동으로 건너뜀</p>
+        </div>
+        <input type="file" id="excel-file-input" accept=".xlsx,.xls" style="display:none" onchange="parseExcelFile(event)">
+        <div class="excel-template-tip">
+          📋 <strong>Excel 양식 형식</strong> (왼쪽부터 순서대로):<br>
+          A: 날짜(YYYY-MM-DD) &nbsp;|&nbsp; B: 강의제목 &nbsp;|&nbsp; C: 강의시작시간(HH:MM) &nbsp;|&nbsp; D: 강의종료시간 &nbsp;|&nbsp; E: 일정유형(확정/가일정/강의가능) &nbsp;|&nbsp; F: 장소
+        </div>
+        <div class="form-actions" style="margin-top:20px">
+          <button type="button" class="btn btn-secondary" onclick="closeExcelModal()">취소</button>
+          <button type="button" class="btn" style="background:rgba(22,163,74,0.1);border:1px solid rgba(22,163,74,0.3);color:#16a34a;font-weight:600" onclick="downloadExcelTemplate()">
+            <i class="fas fa-download"></i> 양식 다운로드
+          </button>
+        </div>
+      </div>
+
+      <!-- 단계 2: 미리보기 -->
+      <div id="excel-step-2" style="display:none">
+        <div id="excel-preview-info"></div>
+        <div class="excel-preview-wrap" id="excel-preview-table-wrap"></div>
+        <div class="form-actions" style="margin-top:16px">
+          <button type="button" class="btn btn-secondary" onclick="resetExcelUpload()">
+            <i class="fas fa-redo"></i> 다시 선택
+          </button>
+          <button type="button" class="btn btn-primary" id="excel-submit-btn" onclick="submitExcelBatch()" style="background:linear-gradient(135deg,#16a34a,#22c55e);box-shadow:0 4px 20px rgba(22,163,74,0.3)">
+            <i class="fas fa-check"></i> <span id="excel-submit-label">일괄 등록</span>
+          </button>
+        </div>
       </div>
     </div>
   </div>
@@ -821,6 +931,8 @@
     let allSchedules = [];        // 이 강사의 모든 일정 데이터
     let selectedScheduleId = '';  // 상세보기 중인 일정 ID
     let modalMode = 'schedule';       // 현재 모달 모드: 'schedule' | 'available'
+    let editingScheduleId = null;     // 수정 중인 일정 ID (null이면 신규 등록)
+    let parsedExcelData = [];         // Excel에서 파싱된 일정 데이터
 
     // =============================================
     // 앱 시작: URL에서 강사 ID 읽고 데이터 로드
@@ -1014,6 +1126,8 @@
     // 일정 추가 모달
     // =============================================
     function openAddModal(dateStr = '') {
+      editingScheduleId = null; // 신규 등록 모드
+      document.getElementById('add-modal-title').innerHTML = '<i class="fas fa-calendar-plus"></i> 새 강의 일정 추가';
       document.getElementById('input-date').value = dateStr || formatDateStr(new Date());
       document.getElementById('input-title').value = '';
       document.getElementById('input-start').value = '';
@@ -1029,6 +1143,7 @@
 
     function closeAddModal() {
       document.getElementById('add-modal-overlay').classList.remove('show');
+      editingScheduleId = null; // 수정 모드 초기화
     }
 
     // =============================================
@@ -1072,24 +1187,34 @@
       }
 
       try {
+        // 수정 모드 vs 신규 등록 모드 구분
+        const isEditing = !!editingScheduleId;
+        const body = isEditing
+          ? { action: 'updateSchedule', instructorId, scheduleId: editingScheduleId, schedule }
+          : { action: 'addSchedule', instructorId, schedule };
+
         const response = await fetch(CONFIG.SCRIPT_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'text/plain' },
-          body: JSON.stringify({
-            action: 'addSchedule',
-            instructorId: instructorId,
-            schedule: schedule
-          })
+          body: JSON.stringify(body)
         });
 
         const data = await response.json();
 
         if (data.success) {
-          // 로컬 데이터에도 추가 (새로 로드 없이 즉시 반영)
-          allSchedules.push({ ...schedule, id: data.scheduleId });
+          if (isEditing) {
+            // 로컬 데이터 수정 반영
+            const idx = allSchedules.findIndex(s => s.id === editingScheduleId);
+            if (idx !== -1) allSchedules[idx] = { ...schedule, id: editingScheduleId };
+            showToast('✅ 일정이 수정되었습니다!', 'success');
+          } else {
+            // 로컬 데이터에 신규 추가
+            allSchedules.push({ ...schedule, id: data.scheduleId });
+            showToast('✅ 일정이 저장되었습니다!', 'success');
+          }
           closeAddModal();
           renderCalendar();
-          showToast('✅ 일정이 저장되었습니다!', 'success');
+          renderSummaryList();
         } else {
           showToast('❌ ' + (data.error || '저장에 실패했습니다.'), 'error');
         }
@@ -1175,6 +1300,227 @@
 
       btn.disabled = false;
       btn.innerHTML = '<i class="fas fa-trash"></i> 삭제';
+    }
+
+    // =============================================
+    // ✏️ 일정 수정 모달 열기
+    // =============================================
+    function openEditModal() {
+      // 현재 상세보기에서 선택된 일정 찾기
+      const schedule = allSchedules.find(s => s.id === selectedScheduleId);
+      if (!schedule) { showToast('⚠️ 일정 정보를 찾을 수 없습니다.', 'error'); return; }
+
+      if (!confirm(`"${schedule.title || '이 일정'}"을 수정하시겠습니까?`)) return;
+
+      closeDetailModal();
+      editingScheduleId = selectedScheduleId;
+
+      // 수정 모드 타이틀
+      document.getElementById('add-modal-title').innerHTML = '<i class="fas fa-edit" style="color:#f97316"></i> 일정 수정하기';
+
+      // 날짜 설정 (공통)
+      document.getElementById('input-date').value = schedule.date;
+
+      if (schedule.status === 'available') {
+        setModalMode('available');
+        document.getElementById('input-avail-memo').value = schedule.title !== '강의 가능' ? schedule.title : '';
+      } else {
+        setModalMode('schedule');
+        document.getElementById('input-title').value = schedule.title || '';
+        document.getElementById('input-start').value = schedule.startTime || '';
+        document.getElementById('input-end').value = schedule.endTime || '';
+        document.getElementById('input-location').value = schedule.location || '';
+        setStatus(schedule.status || 'confirmed');
+      }
+
+      // 수정 저장 버튼 스타일 (주황색)
+      const submitBtn = document.getElementById('submit-btn');
+      submitBtn.style.background = 'linear-gradient(135deg, #f97316, #ef4444)';
+      submitBtn.style.boxShadow = '0 4px 20px rgba(249,115,22,0.4)';
+      submitBtn.innerHTML = '<i class="fas fa-save"></i> 수정 저장하기';
+
+      document.getElementById('add-modal-overlay').classList.add('show');
+    }
+
+    // =============================================
+    // 📂 Excel 업로드 모달
+    // =============================================
+    function openExcelModal() {
+      resetExcelUpload();
+      document.getElementById('excel-modal-overlay').classList.add('show');
+    }
+    function closeExcelModal() {
+      document.getElementById('excel-modal-overlay').classList.remove('show');
+    }
+    function resetExcelUpload() {
+      document.getElementById('excel-step-1').style.display = '';
+      document.getElementById('excel-step-2').style.display = 'none';
+      document.getElementById('excel-file-input').value = '';
+      parsedExcelData = [];
+    }
+
+    // =============================================
+    // 📊 Excel 파일 파싱
+    // =============================================
+    function parseExcelFile(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const wb = XLSX.read(data, { type: 'array', cellDates: true });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          // 날짜를 문자열로 읽어오기
+          const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
+          // 헤더 행(1행) 건너뜨기, 빈 행 제거
+          const dataRows = rows.slice(1).filter(r => r && r.some(c => c !== '' && c !== undefined && c !== null));
+
+          if (dataRows.length === 0) {
+            showToast('⚠️ 데이터가 없습니다. 2행부터 일정을 입력해주세요.', 'error');
+            return;
+          }
+
+          // 한글 상태명 → 영문 코드 변환
+          const statusMap = { '확정': 'confirmed', '가일정': 'tentative', '강의가능': 'available', '강의 가능': 'available' };
+
+          parsedExcelData = dataRows.map((row, idx) => {
+            const dateRaw   = String(row[0] || '').trim();
+            const title     = String(row[1] || '').trim();
+            const startTime = normalizeTime(String(row[2] || '').trim());
+            const endTime   = normalizeTime(String(row[3] || '').trim());
+            const statusRaw = String(row[4] || '').trim();
+            const location  = String(row[5] || '').trim();
+            const dateStr   = normalizeDate(dateRaw);
+            const status    = statusMap[statusRaw] || 'confirmed';
+            const hasError  = !dateStr;
+            return { row: idx + 2, dateStr, title, startTime, endTime, status, statusRaw, location, hasError };
+          });
+
+          renderExcelPreview();
+          document.getElementById('excel-step-1').style.display = 'none';
+          document.getElementById('excel-step-2').style.display = '';
+        } catch(err) {
+          showToast('❌ 파일을 읽을 수 없습니다. .xlsx 형식인지 확인해주세요.', 'error');
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    // 날짜 문자열 정규화 → YYYY-MM-DD
+    function normalizeDate(val) {
+      if (!val) return '';
+      if (/^\d{4}-\d{2}-\d{2}$/.test(val)) return val;
+      if (/^\d{4}\/\d{2}\/\d{2}$/.test(val)) return val.replace(/\//g, '-');
+      const m1 = val.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (m1) return `${m1[3]}-${m1[1].padStart(2,'0')}-${m1[2].padStart(2,'0')}`;
+      if (/^\d{8}$/.test(val)) return `${val.slice(0,4)}-${val.slice(4,6)}-${val.slice(6,8)}`;
+      return '';
+    }
+
+    // 시간 문자열 정규화 → HH:MM
+    function normalizeTime(val) {
+      if (!val) return '';
+      const m = val.match(/^(\d{1,2}):(\d{2})/);
+      return m ? `${m[1].padStart(2,'0')}:${m[2]}` : '';
+    }
+
+    // =============================================
+    // 📋 Excel 미리보기 렌더링
+    // =============================================
+    function renderExcelPreview() {
+      const statusLabels = { confirmed: '✅ 확정', tentative: '🔸 가일정', available: '🟢 강의가능' };
+      const validCount = parsedExcelData.filter(r => !r.hasError).length;
+      const errorCount = parsedExcelData.filter(r => r.hasError).length;
+
+      document.getElementById('excel-preview-info').innerHTML = `
+        <div style="margin-bottom:8px;padding:10px 14px;background:rgba(99,102,241,0.06);border-radius:10px;font-size:0.85rem;display:flex;gap:14px;align-items:center;flex-wrap:wrap">
+          <span>전체 <strong>${parsedExcelData.length}개</strong> 행 인식</span>
+          <span style="color:#16a34a;font-weight:600">✅ 등록 가능 ${validCount}개</span>
+          ${errorCount > 0 ? `<span style="color:var(--danger);font-weight:600">❌ 날짜 오류 ${errorCount}개 (제외됨)</span>` : ''}
+        </div>`;
+
+      document.getElementById('excel-preview-table-wrap').innerHTML = `
+        <table class="excel-preview-table">
+          <thead><tr><th>행</th><th>날짜</th><th>강의제목</th><th>시작</th><th>종료</th><th>유형</th><th>장소</th></tr></thead>
+          <tbody>
+            ${parsedExcelData.map(r => `
+              <tr class="${r.hasError ? 'row-error' : ''}">
+                <td>${r.row}</td>
+                <td>${r.dateStr || '<span style="color:var(--danger)">⚠️ 오류</span>'}</td>
+                <td>${r.title || '<span style="color:var(--text-muted)">-</span>'}</td>
+                <td>${r.startTime || '-'}</td>
+                <td>${r.endTime || '-'}</td>
+                <td>${statusLabels[r.status] || '-'}</td>
+                <td>${r.location || '-'}</td>
+              </tr>`).join('')}
+          </tbody>
+        </table>`;
+
+      document.getElementById('excel-submit-label').textContent = `${validCount}개 일괄 등록하기`;
+    }
+
+    // =============================================
+    // 📤 Excel 일정 일괄 전송
+    // =============================================
+    async function submitExcelBatch() {
+      const validData = parsedExcelData.filter(r => !r.hasError);
+      if (validData.length === 0) { showToast('⚠️ 등록 가능한 데이터가 없습니다.', 'error'); return; }
+
+      const btn = document.getElementById('excel-submit-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 등록 중...';
+
+      const schedules = validData.map(r => ({
+        date: r.dateStr, title: r.title,
+        startTime: r.startTime, endTime: r.endTime,
+        location: r.location, status: r.status
+      }));
+
+      try {
+        const response = await fetch(CONFIG.SCRIPT_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain' },
+          body: JSON.stringify({ action: 'addScheduleBatch', instructorId, schedules })
+        });
+        const data = await response.json();
+
+        if (data.success) {
+          data.scheduleIds.forEach((id, i) => { allSchedules.push({ ...schedules[i], id }); });
+          closeExcelModal();
+          renderCalendar();
+          renderSummaryList();
+          showToast(`✅ ${data.count}개 일정이 등록되었습니다!`, 'success');
+        } else {
+          showToast('❌ ' + (data.error || '등록에 실패했습니다.'), 'error');
+          btn.disabled = false;
+          btn.innerHTML = `<i class="fas fa-check"></i> <span id="excel-submit-label">${validData.length}개 일괄 등록하기</span>`;
+        }
+      } catch(err) {
+        showToast('❌ 네트워크 오류가 발생했습니다.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = `<i class="fas fa-check"></i> <span id="excel-submit-label">${validData.length}개 일괄 등록하기</span>`;
+      }
+    }
+
+    // =============================================
+    // 📥 Excel 양식 다운로드
+    // =============================================
+    function downloadExcelTemplate() {
+      const wb = XLSX.utils.book_new();
+      const headers = ['날짜', '강의제목', '강의시작시간', '강의종료시간', '일정유형', '장소'];
+      const examples = [
+        ['2026-06-15', 'AI 기초 과정 3주차', '09:00', '12:00', '확정', '강남 교육장 3층'],
+        ['2026-06-20', '데이터 분석 심화', '13:00', '17:00', '가일정', ''],
+        ['2026-06-25', '', '', '', '강의가능', ''],
+      ];
+      const note = ['※ 일정유형: 확정 / 가일정 / 강의가능 중 하나. 날짜는 YYYY-MM-DD 형식(2026-06-15 식으로) 입력하세요.'];
+
+      const ws = XLSX.utils.aoa_to_sheet([headers, ...examples, [], note]);
+      ws['!cols'] = [{ wch:14 }, { wch:24 }, { wch:14 }, { wch:14 }, { wch:12 }, { wch:22 }];
+      XLSX.utils.book_append_sheet(wb, ws, '강의일정');
+      XLSX.writeFile(wb, '강의일정_업로드양식.xlsx');
+      showToast('📥 양식 파일이 다운로드되었습니다!', 'success');
     }
 
     // =============================================
