@@ -1373,8 +1373,14 @@
           const ws = wb.Sheets[wb.SheetNames[0]];
           // 날짜를 문자열로 읽어오기
           const rows = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, dateNF: 'yyyy-mm-dd' });
-          // 헤더 행(1행) 건너뜨기, 빈 행 제거
-          const dataRows = rows.slice(1).filter(r => r && r.some(c => c !== '' && c !== undefined && c !== null));
+          // 헤더 행(1행) 건너뜨기, 빈 행 제거, [예시]/※/▼ 등 안내성 행 자동 제외
+          const SKIP_PREFIXES = ['[예시]', '※', '▼', '【', '//', '#'];
+          const dataRows = rows.slice(1).filter(r => {
+            if (!r || !r.some(c => c !== '' && c !== undefined && c !== null)) return false;
+            const firstCell = String(r[0] || '').trim();
+            if (SKIP_PREFIXES.some(p => firstCell.startsWith(p))) return false;
+            return true;
+          });
 
           if (dataRows.length === 0) {
             showToast('⚠️ 데이터가 없습니다. 2행부터 일정을 입력해주세요.', 'error');
@@ -1508,16 +1514,29 @@
     // =============================================
     function downloadExcelTemplate() {
       const wb = XLSX.utils.book_new();
-      const headers = ['날짜', '강의제목', '강의시작시간', '강의종료시간', '일정유형', '장소'];
-      const examples = [
-        ['2026-06-15', 'AI 기초 과정 3주차', '09:00', '12:00', '확정', '강남 교육장 3층'],
-        ['2026-06-20', '데이터 분석 심화', '13:00', '17:00', '가일정', ''],
-        ['2026-06-25', '', '', '', '강의가능', ''],
-      ];
-      const note = ['※ 일정유형: 확정 / 가일정 / 강의가능 중 하나. 날짜는 YYYY-MM-DD 형식(2026-06-15 식으로) 입력하세요.'];
 
-      const ws = XLSX.utils.aoa_to_sheet([headers, ...examples, [], note]);
-      ws['!cols'] = [{ wch:14 }, { wch:24 }, { wch:14 }, { wch:14 }, { wch:12 }, { wch:22 }];
+      // 1행: 헤더
+      const headers = ['날짜', '강의제목', '강의시작시간', '강의종료시간', '일정유형', '장소'];
+
+      // 2행: 작성 안내 (파서가 자동으로 건너뜀)
+      const guide = ['※ [예시] 표시된 3~5행을 참고하세요. 실제 일정은 7행부터 입력하세요.'];
+
+      // 3~5행: 예시 (날짜 앞에 [예시] 표시 → 파서가 자동으로 건너뜀)
+      const examples = [
+        ['[예시] 2026-06-15', 'AI 기초 과정 3주차', '09:00', '12:00', '확정', '강남 교육장 3층'],
+        ['[예시] 2026-06-20', '데이터 분석 심화', '13:00', '17:00', '가일정', ''],
+        ['[예시] 2026-06-25', '', '', '', '강의가능', ''],
+      ];
+
+      // 6행: 구분선 (파서가 자동으로 건너뜀)
+      const separator = ['▼ 여기서부터 실제 일정을 입력하세요 (7행부터 ↓)', '', '', '', '', ''];
+
+      // 7~26행: 실제 입력 공간 (빈 행 20개)
+      const emptyRows = Array(20).fill(['', '', '', '', '', '']);
+
+      const wsData = [headers, guide, ...examples, separator, ...emptyRows];
+      const ws = XLSX.utils.aoa_to_sheet(wsData);
+      ws['!cols'] = [{ wch:18 }, { wch:26 }, { wch:14 }, { wch:14 }, { wch:12 }, { wch:22 }];
       XLSX.utils.book_append_sheet(wb, ws, '강의일정');
       XLSX.writeFile(wb, '강의일정_업로드양식.xlsx');
       showToast('📥 양식 파일이 다운로드되었습니다!', 'success');
